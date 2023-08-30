@@ -76,16 +76,27 @@ export const loginUser = async (req, res) => {
               message: "An Email sent to your account, Please Verify",
             });
           }
-        }
-        let comparePassword = await bcrypt.compare(password, user.password);
-        let uid = user._id;
-        let authToken = await JWT.sign({ payload: uid }, jwt_key);
-        if (comparePassword) {
-          return res.json({
-            message: "successfully Login",
-            userId: uid,
-            authToken: authToken,
-          });
+          let comparePassword = await bcrypt.compare(password, user.password);
+          let uid = user._id;
+          let authToken = await JWT.sign({ payload: uid }, jwt_key);
+          if (comparePassword) {
+            return res.json({
+              message: "successfully Login",
+              userId: uid,
+              authToken: authToken,
+            });
+          }
+        } else {
+          let comparePassword = await bcrypt.compare(password, user.password);
+          let uid = user._id;
+          let authToken = await JWT.sign({ payload: uid }, jwt_key);
+          if (comparePassword) {
+            return res.json({
+              message: "successfully Login",
+              userId: uid,
+              authToken: authToken,
+            });
+          }
         }
       })
       .catch(function (err) {
@@ -122,7 +133,7 @@ const sendMailToVerify = async (email, name, url, subject) => {
     host: process.env.HOST,
     service: process.env.SERVICE,
     port: Number(process.env.PORT),
-    
+
     secure: Boolean(process.nextTick.SECURE),
     auth: {
       user: process.env.DB_AUTH_MAIL,
