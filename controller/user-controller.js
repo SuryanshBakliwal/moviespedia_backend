@@ -122,8 +122,8 @@ const sendMailToVerify = async (email, name, url, subject) => {
     host: process.env.HOST,
     service: process.env.SERVICE,
     port: Number(process.env.PORT),
+    
     secure: Boolean(process.nextTick.SECURE),
-
     auth: {
       user: process.env.DB_AUTH_MAIL,
       pass: process.env.DB_AUTH_MAIL_PASSWORD,
