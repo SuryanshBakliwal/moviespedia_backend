@@ -62,30 +62,10 @@ export const loginUser = async (req, res) => {
     await User.findOne({ email })
       .then(async (user) => {
         if (!user.isVerified) {
-          let token = await Token.findOne({
-            userId: user._id,
+          return res.json({
+            message: "First verfiy your email Id",
+            isVerified: false,
           });
-          if (!token) {
-            token = await new Token({
-              userId: user._id,
-              token: crypto.randomBytes(32).toString("hex"),
-            }).save();
-            const url = `${process.env.BASE_URL}user/${user._id}/verify/${token.token}`;
-            await sendMail(email, user.name, url);
-            res.status(200).send({
-              message: "An Email sent to your account, Please Verify",
-            });
-          }
-          let comparePassword = await bcrypt.compare(password, user.password);
-          let uid = user._id;
-          let authToken = await JWT.sign({ payload: uid }, jwt_key);
-          if (comparePassword) {
-            return res.json({
-              message: "successfully Login",
-              userId: uid,
-              authToken: authToken,
-            });
-          }
         } else {
           let comparePassword = await bcrypt.compare(password, user.password);
           let uid = user._id;
@@ -94,6 +74,7 @@ export const loginUser = async (req, res) => {
             return res.json({
               message: "successfully Login",
               userId: uid,
+              isVerified: true,
               authToken: authToken,
             });
           }
