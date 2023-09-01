@@ -90,7 +90,8 @@ export const loginUser = async (req, res) => {
 
 export const VerifyEmailLogin = async (req, res) => {
   try {
-    let user = await User.findOne({ email: req.body.email });
+    const email = req.body.email;
+    let user = await User.findOne({ email: email });
     if (!user.isVerified) {
       const token = await Token({
         userId: user._id,
