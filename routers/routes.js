@@ -2,6 +2,7 @@ import express from "express";
 import { body } from "express-validator";
 
 import {
+  VerifyEmailLogin,
   createUser,
   forgotPassword,
   loginUser,
@@ -41,6 +42,7 @@ route
 
 route.route("/:id/verify/:token").post(verifyEmail);
 route.route("/addfavroites").post(addFavroites);
+route.route("/forverify").post(VerifyEmailLogin);
 route.route("/getfavorites").post(getFavoriteMovies);
 route.route("/addwatchlist").post(addWatchList);
 route.route("/getwatchlist").post(getWatchList);

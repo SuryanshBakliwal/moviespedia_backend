@@ -88,6 +88,30 @@ export const loginUser = async (req, res) => {
   }
 };
 
+export const VerifyEmailLogin = async (req, res) => {
+  try {
+    let user = await User.findOne({ email: req.body.email });
+    if (!user.isVerified) {
+      const token = await Token({
+        userId: user._id,
+        token: crypto.randomBytes(32).toString("hex"),
+      }).save();
+      const url = `${process.env.BASE_URL}user/${user._id}/verify/${token.token}`;
+      await sendMailToVerify(
+        user.email,
+        user.name,
+        url,
+        "For Acount Verification"
+      );
+      res
+        .status(200)
+        .send({ message: "An Email sent to your account, Please Verify" });
+    }
+  } catch (error) {
+    console.log(error);
+  }
+};
+
 export const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
