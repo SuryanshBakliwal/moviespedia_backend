@@ -201,10 +201,17 @@ export const verifyEmail = async (req, res) => {
       return res.status(400).send({ message: "Invalid Link" });
     }
 
-    await User.updateOne({
-      _id: user._id,
-      isVerified: true,
-    });
+    await User.updateOne(
+      {
+        _id: user._id,
+      },
+      {
+        $set: {
+          isVerified: true,
+        },
+      },
+      { new: true }
+    );
     await token.remove();
     return res.status(200).send({ message: "email verified successfully" });
   } catch (err) {
