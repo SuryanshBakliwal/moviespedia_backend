@@ -175,18 +175,19 @@ const sendMailToResetPassword = async (email, name, url, subject) => {
       pass: process.env.DB_AUTH_MAIL_PASSWORD,
     },
   });
-
-  transporter.sendMail({
-    from: process.env.DB_AUTH_MAIL,
-    to: email,
-    subject: subject,
-    html:
-      "<p>Hello " +
-      name +
-      ` We're sending this email because you're requested password reset. <a href="${url}">click here</a>
+  if (url) {
+    transporter.sendMail({
+      from: process.env.DB_AUTH_MAIL,
+      to: email,
+      subject: subject,
+      html:
+        "<p>Hello " +
+        name +
+        ` We're sending this email because you're requested password reset. <a href="${url}">click here</a>
       to create a new password` +
-      "</p>",
-  });
+        "</p>",
+    });
+  }
 };
 
 export const verifyEmail = async (req, res) => {
