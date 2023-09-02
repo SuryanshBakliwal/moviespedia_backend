@@ -5,6 +5,7 @@ import {
   VerifyEmailLogin,
   createUser,
   forgotPassword,
+  isUserExist,
   loginUser,
   resetPassword,
   verifyEmail,
@@ -42,6 +43,7 @@ route
 
 route.route("/:id/verify/:token").post(verifyEmail);
 route.route("/addfavroites").post(addFavroites);
+route.route("/isexist").post(isUserExist);
 route.route("/forverify").post(VerifyEmailLogin);
 route.route("/getfavorites").post(getFavoriteMovies);
 route.route("/addwatchlist").post(addWatchList);

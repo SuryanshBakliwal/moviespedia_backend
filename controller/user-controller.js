@@ -10,6 +10,18 @@ import crypto from "crypto";
 dotenv.config();
 const jwt_key = process.env.JWTTOKEN;
 
+export const isUserExist = async (req, res) => {
+  try {
+    let user = await User.findOne({ email: req.body.email });
+    if (user) {
+      return res.json({ message: "email exists", flag: true });
+    }
+    return res.json({ message: "email exists", flag: false });
+  } catch (error) {
+    return res.json({ message: error, flag: false });
+  }
+};
+
 export const createUser = async (req, res) => {
   // console.log(req.body);
   const errors = validationResult(req);
