@@ -18,7 +18,7 @@ export const isUserExist = async (req, res) => {
       return res.status(200).json({ message: "Email exists", flag: true });
     }
     return res
-      .status(404)
+      .status(200)
       .json({ message: "Email does not exist", flag: false });
   } catch (error) {
     console.error("Error:", error); // Log the error for debugging purposes
