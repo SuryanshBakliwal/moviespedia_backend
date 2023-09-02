@@ -12,11 +12,13 @@ const jwt_key = process.env.JWTTOKEN;
 
 export const isUserExist = async (req, res) => {
   try {
-    let user = await User.findOne({ email: req.body.email });
+    const email = req.body.email;
+    console.log(email);
+    let user = await User.findOne({ email: email });
     if (user) {
-      return res.json({ message: "email exists", flag: true });
+      return res.json({ message: "email exist", flag: true });
     }
-    return res.json({ message: "email exists", flag: false });
+    return res.json({ message: "email not exist", flag: false });
   } catch (error) {
     return res.json({ message: error, flag: false });
   }
