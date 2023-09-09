@@ -52,16 +52,18 @@ export const createUser = async (req, res) => {
       userId: user._id,
       token: crypto.randomBytes(32).toString("hex"),
     }).save();
-    const url = `${process.env.BASE_URL}user/${user._id}/verify/${token.token}`;
-    await sendMailToVerify(
-      user.email,
-      user.name,
-      url,
-      "For Acount Verification"
-    );
-    res
-      .status(200)
-      .send({ message: "An Email sent to your account, Please Verify" });
+    if (token) {
+      const url = `${process.env.BASE_URL}user/${user._id}/verify/${token.token}`;
+      await sendMailToVerify(
+        user.email,
+        user.name,
+        url,
+        "For Acount Verification"
+      );
+      res
+        .status(200)
+        .send({ message: "An Email sent to your account, Please Verify" });
+    }
   } catch (error) {
     console.log(error);
   }
@@ -156,7 +158,6 @@ export const forgotPassword = async (req, res) => {
   } catch (error) {}
 };
 
-
 const sendMailToVerify = async (
   email,
   name,
@@ -164,6 +165,7 @@ const sendMailToVerify = async (
   subject,
   includeLink = true
 ) => {
+  console.log(url);
   const transporter = nodemailer.createTransport({
     host: process.env.HOST,
     service: process.env.SERVICE,
@@ -178,7 +180,7 @@ const sendMailToVerify = async (
 
   let emailBody = "<p>Hello " + name;
 
-  if (includeLink) {
+  if (includeLink && url) {
     emailBody += ` please <a href="${url}">click here</a> to verify your email`;
   }
 
