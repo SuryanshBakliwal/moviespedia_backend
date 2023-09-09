@@ -156,7 +156,14 @@ export const forgotPassword = async (req, res) => {
   } catch (error) {}
 };
 
-const sendMailToVerify = async (email, name, url, subject) => {
+
+const sendMailToVerify = async (
+  email,
+  name,
+  url,
+  subject,
+  includeLink = true
+) => {
   const transporter = nodemailer.createTransport({
     host: process.env.HOST,
     service: process.env.SERVICE,
@@ -169,15 +176,19 @@ const sendMailToVerify = async (email, name, url, subject) => {
     },
   });
 
+  let emailBody = "<p>Hello " + name;
+
+  if (includeLink) {
+    emailBody += ` please <a href="${url}">click here</a> to verify your email`;
+  }
+
+  emailBody += "</p>";
+
   transporter.sendMail({
     from: process.env.DB_AUTH_MAIL,
     to: email,
     subject: subject,
-    html:
-      "<p>Hello " +
-      name +
-      ` please <a href="${url}">click here</a>
-      to verify your email`,
+    html: emailBody,
   });
 };
 
