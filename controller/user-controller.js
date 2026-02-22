@@ -1,287 +1,212 @@
-import { validationResult } from "express-validator";
-import bcrypt from "bcrypt";
-import dotenv from "dotenv";
-import JWT from "jsonwebtoken";
-import User from "../Models/user.js";
-import nodemailer from "nodemailer";
-import Token from "../Models/token.js";
-import crypto from "crypto";
 
-dotenv.config();
+import { validationResult } from "express-validator";
+import jwt from "jsonwebtoken";
+
+import crypto from "crypto";
+import bcrypt from "bcrypt";
+import User from "../Models/user.js";
+import Token from "../Models/token.js";
+import { sendMail } from "../utils/nodemailer.js";
+
 const jwt_key = process.env.JWTTOKEN;
 
+// --------------------- Check if user exists ---------------------
 export const isUserExist = async (req, res) => {
   try {
-    console.log(req.body.email);
     const user = await User.findOne({ email: req.body.email });
-    if (user) {
-      return res.status(200).json({ message: "Email exists", flag: true });
-    }
-    return res
-      .status(200)
-      .json({ message: "Email does not exist", flag: false });
-  } catch (error) {
-    console.error("Error:", error); // Log the error for debugging purposes
-    return res
-      .status(500)
-      .json({ message: "Internal server error", flag: false });
+    return res.status(200).json({ message: user ? "Email exists" : "Email does not exist", flag: !!user });
+  } catch (err) {
+    return res.status(500).json({ message: "Internal server error", flag: false });
   }
 };
 
-export const createUser = async (req, res) => {
-  // console.log(req.body);
-  const errors = validationResult(req);
-  if (!errors.isEmpty) {
-    return res.status(400).json({
-      error: errors.array(),
-    });
-  }
+// --------------------- Get User Creds---------------------
+export const getUserCreds = async (req, res) => {
   try {
-    let user = await User.findOne({ email: req.body.email });
-    if (user) {
-      return res.json({ message: "email already exists" });
-    }
-    user = new User({
-      name: req.body.name,
-      email: req.body.email,
-      password: req.body.password,
-      confirmPassword: req.body.confirmPassword,
-    });
-    user = await user.save();
-    const token = await Token({
-      userId: user._id,
-      token: crypto.randomBytes(32).toString("hex"),
-    }).save();
-    if (token) {
-      const url = `${process.env.BASE_URL}user/${user._id}/verify/${token.token}`;
-      await sendMailToVerify(
-        user.email,
-        user.name,
-        url,
-        "For Acount Verification"
-      );
-      res
-        .status(200)
-        .send({ message: "An Email sent to your account, Please Verify" });
-    }
-  } catch (error) {
-    console.log(error);
-  }
-};
+    // userId comes from authMiddleware (decoded JWT)
 
-export const loginUser = async (req, res) => {
-  const errors = validationResult(req);
-  if (!errors.isEmpty) {
-    return res.status(400).json({
-      error: errors.array(),
-    });
-  }
-  try {
-    const password = req.body.password;
-    const email = req.body.email;
-    await User.findOne({ email })
-      .then(async (user) => {
-        if (!user.isVerified) {
-          return res.json({
-            message: "First verfiy your email Id",
-            isVerified: false,
-          });
-        } else {
-          let comparePassword = await bcrypt.compare(password, user.password);
-          let uid = user._id;
-          let authToken = await JWT.sign({ payload: uid }, jwt_key);
-          if (comparePassword) {
-            return res.json({
-              message: "successfully Login",
-              userId: uid,
-              isVerified: true,
-              authToken: authToken,
-            });
-          }
-        }
-      })
-      .catch(function (err) {
-        console.log(err);
+    const userEmail = req.user.email;
+
+    const user = await User.findOne({ email: userEmail })
+    console.log(user);
+
+
+    if (!user) {
+      return res.status(404).json({
+        message: "User not found",
+        flag: false
       });
-  } catch (error) {
-    console.log(error);
+    }
+
+    return res.status(200).json({
+      message: "User found",
+      flag: true,
+      data: {
+        email: user.email,
+        username: user.username,
+        name: user.name
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({
+      message: "Internal server error",
+      flag: false
+    });
   }
 };
 
+
+// --------------------- Create User ---------------------
+export const createUser = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return res.status(400).json({ error: errors.array() });
+  try {
+    const { name, email, password, confirmPassword } = req.body;
+    if (password !== confirmPassword) return res.status(400).json({ message: "Passwords do not match" });
+
+    let user = await User.findOne({ email });
+    if (user) return res.status(400).json({ message: "Email already exists." });
+
+    user = await User.create({ name, email, password, confirmPassword });
+
+    const token = await Token.create({ userId: user._id, token: crypto.randomBytes(32).toString("hex") });
+
+    const url = `${process.env.BASE_URL}user/${user._id}/verify/${token.token}`;
+    // await sendMail(user.email, "To Verify Your Account", `<p>Hello ${user.name}, <a href="${url}">click here</a> to verify your email.</p>`);
+    await sendMail(
+      user.email,
+      "To Verify Your Account",
+      `<p>Hello ${user.name},</p>
+   <p>Please <a href="${url}">verify your email</a> to activate your account.</p>`
+    );
+
+    return res.status(200).json({ message: "Verification email sent. Please check your inbox." });
+  } catch (err) {
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// --------------------- Login User ---------------------
+export const loginUser = async (req, res) => {
+
+  try {
+    const { email, password } = req.body;
+    console.log("hekooooooo", email, password);
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ message: "Invalid email or password" });
+    if (!user.isVerified) return res.status(403).json({ message: "Please verify your email first", isVerified: false });
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    console.log("hekooooooo", isMatch);
+
+    if (!isMatch) return res.status(401).json({ message: "Invalid email or password" });
+
+    const authToken = jwt.sign(
+      { email: user.email },
+      jwt_key,
+      { expiresIn: "30m" }
+    );
+    console.log(authToken, user.email);
+
+    // res.cookie("token", authToken, {
+    //   httpOnly: true,
+    //   secure: process.env.NODE_ENV === "production",
+    //   sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+    //   maxAge: 30 * 60 * 1000
+    // });
+    res.cookie("token", authToken, {
+      httpOnly: true,
+      secure: false,   // 🔥 MUST be false
+      sameSite: "lax", // 🔥 REQUIRED
+      path: "/"
+    });
+    console.log(req.cookies)
+    return res.status(200).json({ message: "Login successful", isVerified: true });
+  } catch (err) {
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// --------------------- logout ---------------------
+export const logoutUser = (req, res) => {
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+  });
+
+  return res.status(200).json({ message: "Logged out successfully" });
+};
+
+// --------------------- Verify Email ---------------------
+export const verifyEmail = async (req, res) => {
+  try {
+    const { id, token } = req.params;
+    const user = await User.findById(id);
+    if (!user) return res.status(400).json({ message: "Invalid link" });
+
+    const verifyToken = await Token.findOne({ userId: id, token });
+    if (!verifyToken) return res.status(400).json({ message: "Invalid or expired link" });
+
+    user.isVerified = true;
+    await user.save();
+    await verifyToken.deleteOne();
+
+    return res.status(200).json({ message: "Email verified successfully" });
+  } catch (err) {
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+// --------------------- Resend Verification ---------------------
 export const VerifyEmailLogin = async (req, res) => {
   try {
-    const email = req.body.email;
-    let user = await User.findOne({ email: email });
-    if (user) {
-      if (!user.isVerified) {
-        const token = await Token({
-          userId: user._id,
-          token: crypto.randomBytes(32).toString("hex"),
-        }).save();
-        const url = `${process.env.BASE_URL}user/${user._id}/verify/${token.token}`;
-        await sendMailToVerify(
-          user.email,
-          user.name,
-          url,
-          "For Acount Verification"
-        );
-        res
-          .status(200)
-          .send({ message: "An Email sent to your account, Please Verify" });
-      } else {
-        res.status(200).send({ message: "User doesn't exist" });
-      }
-    }
-  } catch (error) {
-    console.log(error);
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ message: "User doesn't exist" });
+    if (user.isVerified) return res.status(400).json({ message: "User already verified" });
+
+    const token = await Token.create({ userId: user._id, token: crypto.randomBytes(32).toString("hex") });
+    const url = `${process.env.BASE_URL}user/${user._id}/verify/${token.token}`;
+    await sendMail(user.email, "Account Verification", `<p>Hello ${user.name}, <a href="${url}">click here</a> to verify your email.</p>`);
+
+    return res.status(200).json({ message: "Verification email sent again" });
+  } catch (err) {
+    return res.status(500).json({ message: "Internal server error" });
   }
 };
 
+// --------------------- Forgot Password ---------------------
 export const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
-    console.log();
-    let user = await User.findOne({ email: email });
-    if (!user) {
-      return res.json({ message: "User Not Found" });
-    }
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ message: "User not found" });
+
     const url = `${process.env.BASE_URL}user/${user._id}/resetpassword`;
-    await sendMailToResetPassword(
-      user.email,
-      user.name,
-      url,
-      "For Reset Password"
-    );
-    res
-      .status(200)
-      .send({ message: "An Email sent to your account, Please Check..." });
-  } catch (error) {}
-};
+    await sendMail(user.email, "Reset Password", `<p>Hello ${user.name}, <a href="${url}">click here</a> to reset your password.</p>`);
 
-const sendMailToVerify = async (
-  email,
-  name,
-  url,
-  subject,
-  includeLink = true
-) => {
-  console.log(url);
-  const transporter = nodemailer.createTransport({
-    host: process.env.HOST,
-    service: process.env.SERVICE,
-    port: Number(process.env.PORT),
-
-    secure: Boolean(process.nextTick.SECURE),
-    auth: {
-      user: process.env.DB_AUTH_MAIL,
-      pass: process.env.DB_AUTH_MAIL_PASSWORD,
-    },
-  });
-
-  let emailBody = "<p>Hello " + name;
-
-  if (includeLink && url) {
-    emailBody += ` please <a href="${url}">click here</a> to verify your email`;
-  }
-
-  emailBody += "</p>";
-
-  transporter.sendMail({
-    from: process.env.DB_AUTH_MAIL,
-    to: email,
-    subject: subject,
-    html: emailBody,
-  });
-};
-
-const sendMailToResetPassword = async (email, name, url, subject) => {
-  const transporter = nodemailer.createTransport({
-    host: process.env.HOST,
-    service: process.env.SERVICE,
-    port: Number(process.env.PORT),
-    secure: Boolean(process.nextTick.SECURE),
-
-    auth: {
-      user: process.env.DB_AUTH_MAIL,
-      pass: process.env.DB_AUTH_MAIL_PASSWORD,
-    },
-  });
-  if (url) {
-    transporter.sendMail({
-      from: process.env.DB_AUTH_MAIL,
-      to: email,
-      subject: subject,
-      html:
-        "<p>Hello " +
-        name +
-        ` We're sending this email because you're requested password reset. <a href="${url}">click here</a>
-      to create a new password` +
-        "</p>",
-    });
-  }
-};
-
-export const verifyEmail = async (req, res) => {
-  try {
-    let user = await User.findOne({ _id: req.params.id });
-    if (!user) return res.status(400).send({ message: "Invalid Link" });
-    let token = await Token.findOne({
-      userId: user._id,
-      token: req.params.token,
-    });
-    if (!token) {
-      return res.status(400).send({ message: "Invalid Link" });
-    }
-
-    await User.updateOne(
-      {
-        _id: user._id,
-      },
-      {
-        $set: {
-          isVerified: true,
-        },
-      },
-      { new: true }
-    );
-    await token.remove();
-    return res.status(200).send({ message: "email verified successfully" });
+    return res.status(200).json({ message: "Password reset email sent" });
   } catch (err) {
-    console.log(err);
-    res.status(200).send({ message: err });
+    return res.status(500).json({ message: "Internal server error" });
   }
 };
 
+// --------------------- Reset Password ---------------------
 export const resetPassword = async (req, res) => {
   try {
-    const { credentials } = req.body;
-    let { password, confirmPassword } = credentials;
-    console.log(credentials);
+    const { password, confirmPassword } = req.body.credentials;
     const { id } = req.params;
-    console.log(id);
+    if (password !== confirmPassword) return res.status(400).json({ message: "Passwords do not match" });
 
-    let user = await User.findOne({ _id: id });
-    if (!user) {
-      return res.status(400).send({ message: "Invalid Link" });
-    }
-    if (password === confirmPassword) {
-      const salt = await bcrypt.genSalt();
-      let hashPass = await bcrypt.hash(password, salt);
-      password = hashPass;
-      await User.updateOne(
-        { _id: user._id },
-        {
-          $set: {
-            password: password,
-          },
-        },
-        { new: true }
-      );
-    } else {
-      return res.status(200).send({ message: "Please confirm your password" });
-    }
-    return res.status(200).send({ message: "Password Reset Successfully" });
-  } catch (error) {
-    console.log(error);
+    const user = await User.findById(id);
+    if (!user) return res.status(400).json({ message: "Invalid link" });
+
+    user.password = password;
+    await user.save();
+
+    return res.status(200).json({ message: "Password reset successfully" });
+  } catch (err) {
+    return res.status(500).json({ message: "Internal server error" });
   }
 };

@@ -2,7 +2,7 @@ import mongoose from "mongoose";
 import validator from "email-validator";
 import bcrypt from "bcrypt";
 
-const UserSchema = mongoose.Schema({
+const UserSchema = new mongoose.Schema({
   name: {
     type: String,
     required: true,
@@ -12,28 +12,29 @@ const UserSchema = mongoose.Schema({
     type: String,
     required: true,
     unique: true,
-    validate: function () {
-      return validator.validate(this.email);
+    validate: {
+      validator: function (email) {
+        return validator.validate(email);
+      },
+      message: "Invalid email format",
     },
   },
 
   password: {
     type: String,
     required: true,
-    minLength: 6,
+    minlength: 6,
   },
 
-  confirmPassword: {
-    type: String,
-    required: true,
-    minLength: 6,
-    validate: function () {
-      return this.password === this.confirmPassword;
-    },
+  LikedMovies: {
+    type: [Object],
+    default: [],
   },
 
-  LikedMovies: Array,
-  WatchList: Array,
+  WatchList: {
+    type: [Object],
+    default: [],
+  },
 
   isVerified: {
     type: Boolean,
@@ -46,16 +47,15 @@ const UserSchema = mongoose.Schema({
   },
 });
 
-UserSchema.pre("save", function () {
+// Pre-save hook to hash password and remove confirmPassword
+UserSchema.pre("save", async function (next) {
+  if (this.isModified("password")) {
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+  }
   this.confirmPassword = undefined;
-});
-
-UserSchema.pre("save", async function () {
-  const salt = await bcrypt.genSalt();
-  let hashPass = await bcrypt.hash(this.password, salt);
-  this.password = hashPass;
+  next();
 });
 
 const User = mongoose.model("User", UserSchema);
-
 export default User;

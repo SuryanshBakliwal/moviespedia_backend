@@ -1,12 +1,15 @@
 import express from "express";
 import { body } from "express-validator";
 
+
 import {
   VerifyEmailLogin,
   createUser,
   forgotPassword,
+  getUserCreds,
   isUserExist,
   loginUser,
+  logoutUser,
   resetPassword,
   verifyEmail,
 } from "../controller/user-controller.js";
@@ -17,10 +20,15 @@ import {
   getFavoriteMovies,
   getWatchList,
 } from "../controller/favroite-controller.js";
+import { basedOnGenre, getMovieBackDrop, getMovieCredits, getMovieDetail, getMovieRecommendation, hollyBolly, monetization, moviesTypes, tredingMovies } from "../controller/movies-controller.js";
+import { getEpisodeBackdrop, getEpisodeDetail, getSeasonDetail, getTvCast, getTvShowBackdrops, getTvShowCredits, getTvShowDetail, getTvShowRecommendation } from "../controller/tvshows-controller.js";
+import { getPeopleDetail, getPeopleImages, getPeopleMovieCredits, getPeopleTvCredits } from "../controller/people-controller.js";
+import { searchMulti } from "../controller/search-controller.js";
+import { authMiddleware } from "./middleware.js";
 
-const route = express.Router();
+const router = express.Router();
 
-route.post(
+router.post(
   "/createuser",
   [
     body("email", "Enter Correct Email").isEmail(),
@@ -31,7 +39,7 @@ route.post(
   createUser
 );
 
-route
+router
   .route("/loginuser")
   .post(
     [
@@ -41,14 +49,50 @@ route
     loginUser
   );
 
-route.route("/:id/verify/:token").post(verifyEmail);
-route.route("/addfavroites").post(addFavroites);
-route.route("/isexist").post(isUserExist);
-route.route("/forverify").post(VerifyEmailLogin);
-route.route("/getfavorites").post(getFavoriteMovies);
-route.route("/addwatchlist").post(addWatchList);
-route.route("/getwatchlist").post(getWatchList);
-route.route("/forgotpassword").post(forgotPassword);
-route.route("/:id/resetpassword").post(resetPassword);
+router.route("/logout").post(logoutUser);
 
-export default route;
+router.route("/getToken").get(authMiddleware, getUserCreds)
+router.route("/:id/verify/:token").post(verifyEmail);
+router.route("/isexist").post(isUserExist);
+router.route("/forverify").post(VerifyEmailLogin);
+router.route("/addfavroites").post(authMiddleware, addFavroites);
+router.route("/getfavorites").get(authMiddleware, getFavoriteMovies);
+router.route("/addwatchlist").post(authMiddleware, addWatchList);
+router.route("/getwatchlist").get(authMiddleware, getWatchList);
+router.route("/forgotpassword").post(forgotPassword);
+router.route("/:id/resetpassword").post(resetPassword);
+
+
+
+// routers for the movies
+router.route("/trending").get(tredingMovies);
+router.get("/genre", basedOnGenre);
+router.get("/monetization", monetization);
+router.get("/holly-bolly", hollyBolly);
+router.get("/movies-types", moviesTypes);
+
+router.get("/movie/:id", getMovieDetail);
+router.get("/movie/:id/credits", getMovieCredits);
+router.get("/movie/:id/images", getMovieBackDrop);
+router.get("/movie/:id/recommendations", getMovieRecommendation);
+router.get("/movies-types", moviesTypes);
+
+
+router.get("/tv/:id", getTvShowDetail);
+router.get("/tv/:id/credits", getTvShowCredits);
+router.get("/tv/:id/aggregate-credits", getTvCast);
+router.get("/tv/:id/images", getTvShowBackdrops);
+router.get("/tv/:id/recommendations", getTvShowRecommendation);
+router.get("/tv/:id/season/:season", getSeasonDetail);
+router.get("/tv/:id/season/:season/episode/:episode", getEpisodeDetail);
+router.get("/tv/:id/season/:season/episode/:episode/images", getEpisodeBackdrop);
+
+
+router.get("/people/:id", getPeopleDetail);
+router.get("/people/:id/tv-credits", getPeopleTvCredits);
+router.get("/people/:id/movie-credits", getPeopleMovieCredits);
+router.get("/people/:id/images", getPeopleImages);
+
+router.get("/search/", searchMulti);
+
+export default router;
