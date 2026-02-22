@@ -21,7 +21,7 @@ import {
   getWatchList,
 } from "../controller/favroite-controller.js";
 import { basedOnGenre, getMovieBackDrop, getMovieCredits, getMovieDetail, getMovieRecommendation, hollyBolly, monetization, moviesTypes, tredingMovies } from "../controller/movies-controller.js";
-import { getEpisodeBackdrop, getEpisodeDetail, getSeasonDetail, getTvCast, getTvShowBackdrops, getTvShowCredits, getTvShowDetail, getTvShowRecommendation } from "../controller/tvshows-controller.js";
+import { getEpisodeBackdrop, getEpisodeDetail, getSeasonDetail, getShowsByType, getTvCast, getTvShowBackdrops, getTvShowCredits, getTvShowDetail, getTvShowRecommendation } from "../controller/tvshows-controller.js";
 import { getPeopleDetail, getPeopleImages, getPeopleMovieCredits, getPeopleTvCredits } from "../controller/people-controller.js";
 import { searchMulti } from "../controller/search-controller.js";
 import { authMiddleware } from "./middleware.js";
@@ -79,6 +79,7 @@ router.get("/movies-types", moviesTypes);
 
 
 router.get("/tv/:id", getTvShowDetail);
+router.get("/tv/type/:type", getShowsByType);
 router.get("/tv/:id/credits", getTvShowCredits);
 router.get("/tv/:id/aggregate-credits", getTvCast);
 router.get("/tv/:id/images", getTvShowBackdrops);

@@ -124,3 +124,44 @@ export const getSeasonDetail = async (req, res) => {
     }
 };
 
+
+export const getShowsByType = async (req, res) => {
+    try {
+        const { type } = req.params;
+        const { page = 1 } = req.query;
+
+        let endpoint;
+        let params = { page };
+
+        if (type === "popular") {
+            endpoint = `/3/discover/tv`;
+            params.sort_by = "popularity.desc";
+            params.watch_region = "IN";
+        }
+        else if (type === "top_rated") {
+            endpoint = `/3/discover/tv`;
+            params = {
+                ...params,
+                include_adult: false,
+                include_null_first_air_dates: false,
+                language: "en-US",
+                sort_by: "popularity.desc",
+                vote_average_gte: 8.5,
+                vote_count_gte: 100,
+                watch_region: "IN"
+            };
+        }
+        else {
+            endpoint = `/3/tv/${type}`;
+            params.language = "en-US";
+        }
+
+        const response = await tmdbClient.get(endpoint, { params });
+
+        res.status(200).json(response.data);
+
+    } catch (error) {
+        console.error("getShowsByType error:", error.code, error.message);
+        res.status(500).json({ message: "Failed to fetch shows by type" });
+    }
+};
