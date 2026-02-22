@@ -25,7 +25,8 @@
     "jsonwebtoken": "^9.0.1",
     "mongoose": "^7.5.0",
     "nodemailer": "^6.9.4",
-    "nodemon": "^3.0.1"
+    "nodemon": "^3.0.1",
+    "resend": "^6.9.2"
   },
   "engines": {
     "node": ">=14.20.1"
